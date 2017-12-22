@@ -32,7 +32,7 @@ typedef struct {
 } file;
 
 
-// FAT table
+// FAT tle
 file file_table[MAXFILECOUNT];	//table that will contain file information
 int* blocks_next;				//table that will contain blocks' information
 
@@ -192,6 +192,9 @@ int myfs_mount (char *vdisk)
 		file_table[i].open = current_file.open;
 		file_table[i].used = current_file.used;
 		strcpy(file_table[i].filename, current_file.filename);	
+		if(file_table[i].used == 1){
+			allocated_file_count++;
+		}
 	}
 
 	//read data blocks from disk
@@ -284,7 +287,7 @@ int myfs_umount()
 
 	fsync (disk_fd); 
 	close (disk_fd);
-	printf("unmount finished"); 
+	printf("\nunmount finished\n"); 
 	return (0); 
 }
 
@@ -302,6 +305,7 @@ int myfs_create(char *filename)
 			printf ("could not create file\n"); 
 			return -1; 
 	}
+	first_free_block = updateFirstFreeBlock();
 	for (int i = 0 ; i < MAXFILECOUNT; i++){
 		if (file_table[i].used == 0){
 			file_table[i].used = 1;
@@ -313,7 +317,7 @@ int myfs_create(char *filename)
 			break;
 		}
 	}
-
+	myfs_print_blocks ("asd");
 	remaining_block_count--;
 	allocated_file_count++;
 	first_free_block = updateFirstFreeBlock();
@@ -324,7 +328,7 @@ int myfs_create(char *filename)
 int updateFirstFreeBlock(){
 
 	for (int i = data_start_block + 1; i < BLOCKCOUNT; i++){
-		if (blocks_next[i] < BLOCKCOUNT/4) //block is empty
+		if (blocks_next[i] < BLOCKCOUNT/4)
 			return i;
 	}
 	return -1; //no empty block left
@@ -367,6 +371,7 @@ int myfs_delete(char *filename)
 			//error if the file is open
 			if(file_table[i].open ==1 ){
 				printf("error while deleting file: %s ,because it is open\n", filename);
+				exit(1);
 			}
 			// update file information
 			int block = file_table[i].initial;
@@ -379,8 +384,9 @@ int myfs_delete(char *filename)
 			//delete blocks that are allocated to the file
 			while (block > BLOCKCOUNT/4-1 && block < BLOCKCOUNT+1 ){
 				remaining_block_count++;
+				int temp =  blocks_next[block];
 				blocks_next[block] = -1;
-				block = blocks_next[block];
+				block = temp;
 			}
 		}
 	}
@@ -403,7 +409,7 @@ int myfs_read(int fd, void *buf, int n)
 int myfs_write(int fd, void *buf, int n)
 {
 	int bytes_written = 0; 
-
+	
 	if ( 4096 - file_table[fd].offset > n){
 		//there is enough space, no need to allocate another block
 

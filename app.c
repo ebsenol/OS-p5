@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 			printf ("file %s created\n", filename[i]); 
 	}
 
-	fd0 = myfs_open (filename[0]); 	
+	fd0 = myfs_open (filename[2]); 	
 	if (fd0 == -1) {
 		printf ("file open failed: %s\n", filename[0]); 
 		exit (1); 
