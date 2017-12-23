@@ -41,12 +41,6 @@ int main(int argc, char *argv[])
 			printf ("file %s created\n", filename[i]); 
 	}
 
-	fd0 = myfs_open (filename[2]); 	
-	if (fd0 == -1) {
-		printf ("file open failed: %s\n", filename[0]); 
-		exit (1); 
-	}
-
 	myfs_print_dir();
 	myfs_delete(filename[0]);
 	//myfs_delete(filename[0]);

@@ -445,8 +445,18 @@ int myfs_truncate(int fd, int size)
 int myfs_seek(int fd, int offset)
 {
 	int position = -1; 
+	//if the given file descriptor is invalid
+	if(!file_table[fd].used)
+		return position;
+	//if offset is larger than the file size
+	if(offset > file_table[fd].size){
+		position = file_table[fd].size;
+	}
+	else
+		position = offset;
 
-	// write your code
+	return position;
+	
 
 	return (position); 
 } 
