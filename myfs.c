@@ -549,7 +549,7 @@ int myfs_write(int fd, void *buf, int n)
 			first_free_block = updateFirstFreeBlock();
 			
 			block = blocks_next[block];
-	
+			remaining_block_count--;//update remaining blocks
 			
 			getblock(block, (void *)temp_block);
 			
@@ -561,6 +561,9 @@ int myfs_write(int fd, void *buf, int n)
 				if(bytes_written == (int)n) {
 					putblock(block, (void *)temp_block);
 					file_table[fd].offset += bytes_written;
+					if(file_table[fd].size < file_table[fd].offset){ //update size if necessary
+						file_table[fd].size = file_table[fd].offset;
+					}
 					return bytes_written;
 				}
 			}
@@ -568,7 +571,7 @@ int myfs_write(int fd, void *buf, int n)
 			putblock(block, (void *)temp_block);
 		}
 		
-		remaining_block_count--;//update remaining blocks
+		
 		
 		file_table[fd].offset += bytes_written;//update offset
 		
@@ -592,9 +595,31 @@ int myfs_truncate(int fd, int size)
 
 	if(!file_table[fd].used)
         return -1;
-	 if (size > file_table[fd].size || size < 0) 
+	if (size > file_table[fd].size || size < 0) 
         return -1;
 	
+	int block = file_table[fd].initial;
+	int cur_offset = size;
+	int next_block;
+	
+	//getting the current block
+	while (cur_offset >= BLOCKSIZE){
+		block = blocks_next[block];
+		cur_offset -= BLOCKSIZE;
+	}
+
+	while(block > BLOCKCOUNT/4-1 && block < BLOCKCOUNT+1){
+		next_block = blocks_next[block];
+		if(next_block != 99999){
+			remaining_block_count++;
+		}
+		blocks_next[block] = 99999;
+		block = next_block;
+	}
+
+
+
+	file_table[fd].offset = size;
 	//modify size
 	file_table[fd].size = size;
 
