@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 	}
 
 	myfs_print_dir();
-	myfs_delete(filename[0]);
+	//myfs_delete(filename[0]);
 	//myfs_delete(filename[0]);
 	//myfs_delete(filename[0]);
 
@@ -53,36 +53,41 @@ int main(int argc, char *argv[])
 	myfs_print_dir();
 
 	myfs_print_blocks(filename[3]);
-
-/*	for (i=0; i<100; ++i) {
+	fd0 = myfs_open (filename[0]); 
+	for (i=0; i<100; ++i) {
+		printf ("next write %d\n", i);
 		n = myfs_write (fd0, buf, 500);  
 		if (n != 500) {
 			printf ("vsfs_write failed\n"); 
+			printf ("%d\n", n); 
 			exit (1); 
 		}
 	}
-
+	
 	myfs_close (fd0); 
-
+	printf ("Writing finished\n");
+	myfs_print_blocks(filename[0]);
 	fd0 = myfs_open (filename[0]); 
  
 	for (i=0; i<(100*500); ++i) 
 	{
+		printf ("next read %d\n", i);
 		n = myfs_read (fd0, buf, 1); 
 		if (n != 1) {
 			printf ("vsfs_read failed\n"); 
+			printf ("%d\n", n); 
 			exit(1); 
 		}
 	}
 	
 	myfs_close (fd0); 
 
-	fd1 = myfs_open (filename[1]); 
-	fd2 = myfs_open (filename[2]); 
+	// fd1 = myfs_open (filename[1]); 
+	// fd2 = myfs_open (filename[2]); 
 
-	myfs_close (fd1);
-	myfs_close (fd2); 
-	 */
+	// myfs_close (fd1);
+	// myfs_close (fd2); 
+	printf ("Starting umount\n");
 	myfs_umount(); 
 
 	return (0);		
