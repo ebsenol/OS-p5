@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 	}
 	else 
 		printf ("filesystem %s mounted\n", diskname); 
-	myfs_print_blocks(filename[0]);
+	
 
 	for (i=0; i<3; ++i) {
 		if (myfs_create (filename[i]) != 0) {
@@ -64,16 +64,21 @@ int main(int argc, char *argv[])
 		myfs_close (fd0); 
 
 	}
+	printf("a:\n");
+	myfs_print_blocks(filename[0]);
+
 	write_end = clock();
 
-   	write_time = (double)(write_end - write_start) / 10;
-   //	read_time = (double)(read_time/10);
-    printf("Total time taken by CPU to read: %f\n", write_time  );
+   	write_time = (double)(write_end - write_start) / 1000;
 
-	//myfs_close (fd0); 
+    printf("\nTotal time taken by CPU to write: %f\n", write_time  );
+    
+    printf("fd0 %d",fd0);
+    int mysize = myfs_filesize(fd0);
+    printf("\n mysize: %d",mysize);
+    
+	read_start = clock();
 
-	//fd0 = myfs_open (filename[0]); 
- /*
 	for (i=0; i<(100*500); ++i) 
 	{
 		n = myfs_read (fd0, buf, 1); 
@@ -81,7 +86,13 @@ int main(int argc, char *argv[])
 			printf ("vsfs_read failed\n"); 
 			exit(1); 
 		}
-	}*/
+	}
+
+	read_end = clock();
+
+   	read_time = (double)(read_end - read_start) / 1000;
+   	printf("\nTotal time taken by CPU to read: %f\n", read_time  );
+
 	myfs_print_dir();
 
 	myfs_close (fd0); 
@@ -92,6 +103,11 @@ int main(int argc, char *argv[])
 	myfs_close (fd1);
 	myfs_close (fd2); 
 	 
+	// printf("\n before format:");
+	// myfs_print_dir();
+	// myfs_makefs(diskname);
+	// printf("\n after format:");
+	// myfs_print_dir();
 	myfs_umount(); 
 	
 	return (0);		

@@ -148,7 +148,86 @@ int myfs_makefs(char *vdisk)
 	// perform your format operations here. 
 	printf ("formatting disk=%s, size=%d\n", vdisk, disk_size); 
 
-	free(blocks_next);
+	
+	for (int i = 0 ; i < BLOCKCOUNT; i++){
+		blocks_next[i] = 0; // data blocks are initialized
+	}
+
+	// initialize file table
+	for (int i = 0; i < MAXFILECOUNT; i++){
+		file_table[i].initial = 0;
+		file_table[i].offset = 0;
+		file_table[i].open = 0;
+		file_table[i].used = 0;
+		file_table[i].size = 0;
+		strcpy(file_table[i].filename, "");
+	}
+
+	allocated_file_count = 0;
+	remaining_block_count = BLOCKCOUNT * 3 / 4; //for actual data
+	open_file_count = 0;
+	data_start_block = BLOCKCOUNT / 4; 
+	first_free_block=updateFirstFreeBlock();
+
+	// write file information to disk
+	// first half
+	file* fileBuffer1;
+	fileBuffer1 = (file*)malloc(MAXFILECOUNT / 2 * sizeof(file));
+
+	for (int i = 0 ; i < MAXFILECOUNT / 2; i++){
+		file current_file;
+		current_file.initial = file_table[i].initial;
+		current_file.offset  = file_table[i].offset;
+		current_file.open    = file_table[i].open;
+		current_file.used 	 = file_table[i].used;
+		current_file.size 	 = file_table[i].size;
+		strcpy(current_file.filename, file_table[i].filename);
+		fileBuffer1[i] = current_file;
+	}
+	putblock(fat_start_block, (void *)fileBuffer1);
+	fileBuffer1 = (file*)malloc(0);
+
+	// second half
+	file* fileBuffer2;
+	fileBuffer2 = (file*)malloc(MAXFILECOUNT / 2 * sizeof(file));
+
+	for (int i = MAXFILECOUNT / 2 ; i < MAXFILECOUNT; i++){
+		int j = i - MAXFILECOUNT / 2;
+		file current_file;
+		current_file.initial = file_table[i].initial;
+		current_file.offset  = file_table[i].offset;
+		current_file.open    = file_table[i].open;
+		current_file.used 	 = file_table[i].used;
+		current_file.size 	 = file_table[i].size;
+		strcpy(current_file.filename, file_table[i].filename);
+		fileBuffer2[j] = current_file;
+	}
+
+	putblock(fat_start_block + 1, (void *)fileBuffer2);
+	fileBuffer2 = (file*)malloc(0);
+	fat_start_block++;
+
+	// write block information to the disk
+	int* blockBuffer2;
+	int block_counter = 1;
+	while (block_counter < 26){ // 25 blocks will be 	
+			blockBuffer2 = (int*)malloc(BLOCKSIZE);
+
+			for (int j = 0 ; j < 1000; j++){
+				int currentBlock = data_start_block + (block_counter - 1) * 1000 + j;
+				//printf("\nbl:%d ,dsb: %d, bc: %d, j : %d , cb : %d\n",BLOCKCOUNT, data_start_block,block_counter,j,currentBlock);
+				if(currentBlock < BLOCKCOUNT){
+					blockBuffer2[j] = blocks_next[currentBlock];
+				}
+
+			}
+			putblock(fat_start_block + block_counter, (void *)blockBuffer2);
+			block_counter++;
+			blockBuffer2 = (int*)malloc(0);
+	}
+	fat_start_block--;
+
+	
 	fsync (disk_fd); 
 	close (disk_fd); 
 
@@ -206,6 +285,7 @@ int myfs_mount (char *vdisk)
 		file_table[i].offset = -1;
 		file_table[i].open = 0;
 		file_table[i].used = 0;
+		file_table[i].size = 0;
 		strcpy(file_table[i].filename, "");
 	}
 
@@ -225,6 +305,8 @@ int myfs_mount (char *vdisk)
 		file_table[i].offset = current_file.offset;
 		file_table[i].open = current_file.open;
 		file_table[i].used = current_file.used;
+		file_table[i].size = current_file.size;
+
 		strcpy(file_table[i].filename, current_file.filename);	
 		if(file_table[i].used == 1){
 			allocated_file_count++;
@@ -247,6 +329,7 @@ int myfs_mount (char *vdisk)
 		file_table[i].offset = current_file.offset;
 		file_table[i].open = current_file.open;
 		file_table[i].used = current_file.used;
+		file_table[i].size = current_file.size;
 		strcpy(file_table[i].filename, current_file.filename);	
 		if(file_table[i].used == 1){
 			allocated_file_count++;
@@ -293,6 +376,7 @@ int myfs_umount()
 		current_file.offset  = file_table[i].offset;
 		current_file.open    = file_table[i].open;
 		current_file.used 	 = file_table[i].used;
+		current_file.size 	 = file_table[i].size;
 		strcpy(current_file.filename, file_table[i].filename);
 		fileBuffer1[i] = current_file;
 	}
@@ -310,6 +394,7 @@ int myfs_umount()
 		current_file.offset  = file_table[i].offset;
 		current_file.open    = file_table[i].open;
 		current_file.used 	 = file_table[i].used;
+		current_file.size 	 = file_table[i].size;
 		strcpy(current_file.filename, file_table[i].filename);
 		fileBuffer2[j] = current_file;
 	}
@@ -336,10 +421,10 @@ int myfs_umount()
 			block_counter++;
 			blockBuffer2 = (int*)malloc(0);
 	}
+	fat_start_block--;
 
 	fsync (disk_fd); 
 	close (disk_fd);
-	fat_start_block--;
 
 	printf("\nunmount finished\n"); 
 	return (0); 
@@ -516,7 +601,7 @@ int myfs_write(int fd, void *buf, int n)
 	if(n <= 0 || !file_table[fd].used) {
         return -1;
 	}
-	
+	int initialSize = file_table[fd].size;
 	int block = file_table[fd].initial;
 	int cur_offset = file_table[fd].offset;
 	char temp_block[BLOCKSIZE];
@@ -614,11 +699,12 @@ int myfs_write(int fd, void *buf, int n)
 
 int myfs_truncate(int fd, int size)
 {
-
-	if(!file_table[fd].used)
+	if(!file_table[fd].used){
         return -1;
-	if (size >= file_table[fd].size || size < 0) 
+	}
+	if (size >= file_table[fd].size || size < 0){
         return -1;
+	}
 	
 	int block = file_table[fd].initial;
 	int cur_offset = size;
@@ -694,7 +780,7 @@ void myfs_print_dir ()
 	printf("print dir:\n");
 	for (int i = 0 ; i < MAXFILECOUNT; i++)
 		if (file_table[i].used == 1)
-			printf ("i=%d  %s\n",i, file_table[i].filename);
+			printf ("i=%d %s\n",i, file_table[i].filename);
 }
 
 
@@ -703,7 +789,7 @@ void myfs_print_blocks (char *  filename)
 	for (int i = 0 ; i < MAXFILECOUNT; i++){
 		if (strcmp(file_table[i].filename, filename) == 0){
 				int start = file_table[i].initial;
-				printf ("\n%s: %d ", file_table[i].filename, start);
+				printf ("\n%s: %d", file_table[i].filename, start);
 				int next = blocks_next[start];
 				while (next > BLOCKCOUNT/4-1 && next < BLOCKCOUNT+1 ){
 					printf(" %d", next);
