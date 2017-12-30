@@ -100,7 +100,7 @@ int myfs_diskcreate (char *vdisk)
 	char vdiskname[128]; 
 	char buf[BLOCKSIZE];     
 	int numblocks = 0; 
-
+	printf("creating:");
 
 	strcpy (vdiskname, vdisk); 
         size = DISKSIZE; 
@@ -147,7 +147,7 @@ int myfs_makefs(char *vdisk)
 	
 	// perform your format operations here. 
 	printf ("formatting disk=%s, size=%d\n", vdisk, disk_size); 
-
+	blocks_next = (int*) malloc( (BLOCKCOUNT) * sizeof(int));
 	
 	for (int i = 0 ; i < BLOCKCOUNT; i++){
 		blocks_next[i] = 0; // data blocks are initialized
@@ -248,6 +248,7 @@ int myfs_mount (char *vdisk)
 	struct stat finfo; 
 
 	strcpy (disk_name, vdisk);
+	printf("Opening the file\n");
 	disk_fd = open (disk_name, O_RDWR); 
 	if (disk_fd == -1) {
 		printf ("myfs_mount: disk open error %s\n", disk_name); 
@@ -259,7 +260,7 @@ int myfs_mount (char *vdisk)
 	printf ("myfs_mount: mounting %s, size=%d\n", disk_name, (int) finfo.st_size);  
 	disk_size = (int) finfo.st_size; 
 	disk_blockcount = disk_size / BLOCKSIZE; 
-
+	
 
 	// initialize global variables
 	allocated_file_count = 0;
@@ -294,10 +295,11 @@ int myfs_mount (char *vdisk)
 
 	// read table info from disk
 	file* fileBuffer1;
-	fileBuffer1 = (file*)malloc(BLOCKSIZE);
+	fileBuffer1 = (file*)malloc((MAXFILECOUNT / 2)*sizeof(file));
 
 	// stored on 1000. block
 	getblock(fat_start_block, (void*)fileBuffer1);
+
 
 	for (int i = 0; i < MAXFILECOUNT / 2; i++){
 		file current_file = fileBuffer1[i];
@@ -306,18 +308,18 @@ int myfs_mount (char *vdisk)
 		file_table[i].open = current_file.open;
 		file_table[i].used = current_file.used;
 		file_table[i].size = current_file.size;
-
 		strcpy(file_table[i].filename, current_file.filename);	
 		if(file_table[i].used == 1){
 			allocated_file_count++;
 		}
+		
 	}
 
 	// put second half:
 
 	// read table info from disk
 	file* fileBuffer2;
-	fileBuffer2 = (file*)malloc(BLOCKSIZE);
+	fileBuffer2 = (file*)malloc((MAXFILECOUNT / 2)*sizeof(file));
 
 	// stored on 1001. block
 	getblock(fat_start_block + 1, (void*)fileBuffer2);
@@ -335,9 +337,9 @@ int myfs_mount (char *vdisk)
 			allocated_file_count++;
 		}
 	}
-
 	fat_start_block++;
 	//read data blocks from disk
+	
 	int block_counter = 1;
 	while (block_counter < 26){ // 25 blocks will be used each will contain 1000 integers (holding 4000 bytes each)
 			int* blockBuffer;
@@ -351,11 +353,11 @@ int myfs_mount (char *vdisk)
 				}
 			}
 			block_counter++;
-			free(blockBuffer);
+			//free(blockBuffer);
 
 	}
-	free(fileBuffer1);
-	free(fileBuffer2);
+	//free(fileBuffer1);
+	//free(fileBuffer2);
 
 	first_free_block = updateFirstFreeBlock();
 	fat_start_block--;
@@ -777,10 +779,10 @@ int myfs_filesize (int fd)
 
 void myfs_print_dir ()
 {
-	printf("print dir:\n");
+	//printf("print dir:\n");
 	for (int i = 0 ; i < MAXFILECOUNT; i++)
 		if (file_table[i].used == 1)
-			printf ("i=%d %s\n",i, file_table[i].filename);
+			printf ("%s\n", file_table[i].filename);
 }
 
 
