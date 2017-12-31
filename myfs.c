@@ -568,7 +568,7 @@ int myfs_read(int fd, void *buf, int n)
 		
         buffer[bytes_read++] = block[i];
 		//checking if enough
-        if(bytes_read == (int)n) {
+        if(bytes_read == (int)n ){//|| block[i] == '\0') {
             file_table[fd].offset += bytes_read;
             return bytes_read;
         }
@@ -583,7 +583,7 @@ int myfs_read(int fd, void *buf, int n)
         for(int i =0; i < BLOCKSIZE; i++) {
             buffer[bytes_read++] = block[i];
 			//checking if enough
-            if(bytes_read == (int)n ) {
+            if(bytes_read == (int)n ){//|| block[i] == '\0') {
                 file_table[fd].offset += bytes_read;
                 return bytes_read;
             }
@@ -615,7 +615,13 @@ int myfs_write(int fd, void *buf, int n)
 			// allocate a new one
 			blocks_next[block] = first_free_block;
 			block = first_free_block;
+			blocks_next[first_free_block] = 99999;
 			remaining_block_count--;
+			//cur_offset = 0;
+			if (cur_offset == BLOCKSIZE){
+				printf("Offset : %d , " , cur_offset);
+				cur_offset = 0;
+			}
 			break;
 		}
 		block = blocks_next[block];
@@ -624,12 +630,15 @@ int myfs_write(int fd, void *buf, int n)
 	first_free_block = updateFirstFreeBlock();
 	//writing to the initial block
 	getblock(block, (void *)temp_block);
+	printf("writing %lf\n", buffer);
 	for(int i = cur_offset; i < BLOCKSIZE; i++) {
 		temp_block[i] = buffer[bytes_written];
+		
 		bytes_written++; 
 		//checking if enough
 		if(bytes_written == (int)n) {
-			putblock(block, (void *)temp_block);
+			printf("%s\n", temp_block);
+			putblock(block, temp_block);
 			file_table[fd].offset += bytes_written;
 			return bytes_written;
 		}
@@ -644,8 +653,10 @@ int myfs_write(int fd, void *buf, int n)
 			//copying the block from the beginning
 			for(int i =0; i < BLOCKSIZE; i++) {
 				temp_block[i] = buffer[bytes_written++]; 
+				// printf("writing %s\n", buffer);
 				//checking if enough
 				if(bytes_written == (int)n) {
+					printf("%s\n", temp_block);
 					putblock(block, (void *)temp_block);
 					file_table[fd].offset += bytes_written;
 					return bytes_written;
@@ -674,6 +685,7 @@ int myfs_write(int fd, void *buf, int n)
 		for(int i =0; i < BLOCKSIZE; i++) { 
 			
 			temp_block[i] = buffer[bytes_written++]; 
+			// printf("writing %s\n", buffer);
 			//checking if enough
 			if(bytes_written == (int)n) {
 				putblock(block, (void *)temp_block);
@@ -681,6 +693,7 @@ int myfs_write(int fd, void *buf, int n)
 				if(file_table[fd].size < file_table[fd].offset){ //update size if necessary
 					file_table[fd].size = file_table[fd].offset;
 				}
+				printf("%s\n", temp_block);
 				return bytes_written;
 			}
 		}
@@ -695,7 +708,7 @@ int myfs_write(int fd, void *buf, int n)
 	if(file_table[fd].size < file_table[fd].offset){ //update size if necessary
 		file_table[fd].size = file_table[fd].offset;
 	}
-
+	printf("%s\n", temp_block);
 	return bytes_written;
 } 
 
@@ -792,9 +805,22 @@ void myfs_print_blocks (char *  filename)
 		if (strcmp(file_table[i].filename, filename) == 0){
 				int start = file_table[i].initial;
 				printf ("\n%s: %d", file_table[i].filename, start);
+				char*buff;
+				void* buff2;
+				getblock(start,buff2);
+				buff = (char  *) buff2;
+				for (int i = 0; i < BLOCKSIZE; i++){
+			//		printf("%s", buff[i]);
+				}
 				int next = blocks_next[start];
 				while (next > BLOCKCOUNT/4-1 && next < BLOCKCOUNT+1 ){
-					printf(" %d", next);
+					printf(" %d", next);	
+					void* buff2;
+					getblock(start,buff2);
+					buff = (char  *) buff2;
+					for (int i = 0; i < BLOCKSIZE; i++){
+			//			printf("%s", (char*)buff[i]);
+					}
 					next = blocks_next[next];
 				}
 				return;
